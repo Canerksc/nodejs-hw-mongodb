@@ -12,3 +12,19 @@ export const getContactById = async (contactId) => {
   return contact;
 };
 
+export const createContact = async (contactData) => {
+  const contact = await Contact.create(contactData);
+  return contact;
+};
+
+export const updateContact = async (contactId, contactData) => { 
+  const contact = await Contact.findByIdAndUpdate(contactId, contactData, {
+    new: true,
+  });
+  return contact;
+};
+
+export const deleteContact = async (contactId) => {
+  const contact = await Contact.findByIdAndDelete(contactId);
+  return contact;
+};
