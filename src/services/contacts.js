@@ -2,9 +2,36 @@
 import { Contact } from '../db/Contact.js';
 
 // Veritabanından tüm kişileri bulup getiren fonksiyon.
-export const getAllContacts = async () => {
-  const contacts = await Contact.find(); 
-  return contacts;
+export const getAllContacts = async ({
+  page, 
+  perPage,
+  sortBy, 
+  sortOrder,
+  type, 
+  isFavourite
+}) => {
+  const skip = (page - 1)*perPage;
+  const sortOptions = { [sortBy]: sortOrder };
+
+  const filter = {};
+    if (type) {
+    filter.contactType = type;
+  };
+
+  if (isFavourite !== undefined) {
+    filter.isFavourite = isFavourite === 'true';
+  }
+
+  const contacts = await Contact
+  .find(filter)
+  .sort(sortOptions)
+  .skip(skip)
+  .limit(perPage); 
+  const totalItems = await Contact.countDocuments(filter);
+  return {
+    contacts,
+    totalItems,
+  };
 };
 
 export const getContactById = async (contactId) => {
