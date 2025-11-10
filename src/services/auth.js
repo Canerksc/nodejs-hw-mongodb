@@ -7,6 +7,8 @@ import {
   ACCESS_TOKEN_LIFETIME_MS,
   REFRESH_TOKEN_LIFETIME_MS,
 } from '../constants/index.js';
+import jwt from 'jsonwebtoken';
+import { sendEmail } from '../utils/sendEmail.js';
 
 
 export const registerUser = async (payload) => {
@@ -93,4 +95,55 @@ export const refreshSession = async (refreshTokenFromCookie) => {
 
 export const logoutUser = async (refreshTokenFromCookie) => {
   await Session.deleteOne({ refreshToken: refreshTokenFromCookie });
+};
+
+export const sendResetPasswordEmail = async (email) => {
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw createHttpError(404, 'User not found!');
+  }
+  const resetToken = jwt.sign(
+    {
+      userId: user._id, 
+      email: user.email,
+    },
+    process.env.JWT_SECRET, 
+    { expiresIn: '5m' }, 
+  );
+
+  const resetLink = `${process.env.APP_DOMAIN}/reset-password?token=${resetToken}`;
+
+  await sendEmail({
+    from:process.env.SMTP_FROM,
+    to: email,
+    subject: 'Şifre Sıfırlama Talebi',
+    html: `
+      <p>Şifrenizi sıfırlamak için lütfen aşağıdaki bağlantıya tıklayın:</p>
+      <a href="${resetLink}">Şifreyi Sıfırla</a>
+      <p>Bu bağlantı 5 dakika sonra geçersiz olacaktır.</p>
+    `,
+  });
+};
+
+export const resetPassword = async (payload) => {
+  const { token, password } = payload;
+  let tokenPayload;
+
+  try {
+    tokenPayload = jwt.verify(token, process.env.JWT_SECRET);
+  // eslint-disable-next-line no-unused-vars
+  } catch (err) {
+    throw createHttpError(401, 'Token is expired or invalid.');
+  }
+
+  const user = await User.findOne({ email: tokenPayload.email });
+  if (!user) {
+    throw createHttpError(404, 'User not found!');
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  await User.updateOne({ _id: user._id }, { password: hashedPassword });
+
+  await Session.deleteMany({ userId: user._id });
 };

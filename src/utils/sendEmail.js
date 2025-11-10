@@ -1,0 +1,35 @@
+import nodemailer from 'nodemailer';
+import createHttpError from 'http-errors';
+
+
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT), 
+  secure:false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASSWORD,
+  },
+});
+
+export const sendEmail = async ({ to, subject, html }) => {
+  const from = process.env.SMTP_FROM;
+
+  const mailOptions = {
+    from,
+    to,
+    subject,
+    html,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+  } catch (err) {
+    console.error('Error sending email: ', err);
+    throw createHttpError(
+      500,
+      'Failed to send the email, please try again later.',
+    );
+  }
+};
